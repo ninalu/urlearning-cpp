@@ -1,0 +1,4 @@
+lib base : 
+   bayesian_network.cpp
+   skeleton.cpp
+;

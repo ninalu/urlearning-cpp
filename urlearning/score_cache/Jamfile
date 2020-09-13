@@ -1,0 +1,6 @@
+lib score_cache :
+        score_cache.cpp
+        sparse_parent_bitwise.cpp
+        sparse_parent_list.cpp
+        sparse_parent_tree.cpp
+;

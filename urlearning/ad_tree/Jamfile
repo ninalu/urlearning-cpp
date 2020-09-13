@@ -1,0 +1,5 @@
+lib ad_tree :
+    ad_node.cpp
+    ad_tree.cpp
+    vary_node.cpp
+;

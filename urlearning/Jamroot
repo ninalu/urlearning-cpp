@@ -1,0 +1,45 @@
+import os ;
+path-constant TOP : . ; # define project  root
+path-constant HOME_DIR : [ os.environ HOME ] ;
+path-constant BOOST_ROOT : $(HOME_DIR)/boost ;
+#path-constant BOOST_BUILD_PATH : $(BOOST_ROOT)/share/boost-build ;
+
+
+variant gnu_release : release : <cxxflags>-std=c++0x ;
+variant gnu_debug   : debug   : <cxxflags>-std=c++0x ;
+
+import feature : feature ;
+feature with-feat : no yes : optional propagated ;
+
+project 
+    : requirements
+      <include>$(TOP)
+      <include>$(BOOST_ROOT)
+      <include>/usr/local/include/
+#      <include>$(HOME_DIR)/mlpack/mlpack-2.2.3/include
+    : requirements
+#      <library-path>$(HOME_DIR)/mlpack/mlpack-2.2.3/lib
+     <library-path>/usr/local/lib
+      <warnings>on
+      <cxxflags>-Wno-deprecated
+      <cxxflags>-std=c++11
+      <cxxflags>-Wno-reorder
+      <cxxflags>-fno-strict-aliasing
+      <cxxflags>-I$(HOME_DIR)/boost/include
+    : build-dir ../build
+    ;
+
+build-project base ;
+build-project scoring_function ; 
+build-project score_cache ;
+build-project score ;
+build-project priority_queue ;
+build-project heuristic ;
+build-project fileio ;
+build-project astar ;
+
+install lib : base scoring_function score_cache score priority_queue heuristic fileio astar ;
+install ../bin : score//score
+              astar//astar
+              astar//triplet_astar
+;

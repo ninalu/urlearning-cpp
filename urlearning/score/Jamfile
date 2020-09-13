@@ -1,0 +1,21 @@
+exe score :
+  score_main.cpp
+  $(TOP)/base//base
+  $(TOP)/ad_tree//ad_tree
+  $(TOP)/score_cache//score_cache
+  $(TOP)/scoring_function//scoring_function
+  $(BOOST_ROOT)/lib/libboost_system.a
+  $(BOOST_ROOT)/lib/libboost_program_options.a
+  $(BOOST_ROOT)/lib/libboost_thread.a
+  $(BOOST_ROOT)/lib/libboost_timer.a
+  $(BOOST_ROOT)/lib/libboost_chrono.a
+  $(BOOST_ROOT)/lib/libboost_thread.a
+  /usr/local/lib/libmlpack.so
+#  /home/nilu/mlpack/mlpack-2.2.3/lib/libmlpack.so
+#  $(BOOST_ROOT)/lib/libboost_iostream.a
+#  $(BOOST_ROOT)/lib/unordered_set
+ : <linkflags>-larmadillo
+#   <linkflags>-lmlpack
+   <linkflags>-lpthread
+#   <linkflags>-L/usr/local/lib/libmlpack.so
+;

@@ -1,0 +1,15 @@
+lib scoring_function :
+        bdeu_scoring_function.cpp
+        bic_scoring_function.cpp
+        fnml_scoring_function.cpp
+        log_likelihood_calculator.cpp
+        score_calculator.cpp
+        lasso_entropy_scoring_function.cpp
+        adaptive_lasso_entropy.cpp
+        BIC_OLS.cpp
+;
+
+
+lib lasso_entropy_scoring_function :
+   lasso_entropy_scoring_function.cpp
+;

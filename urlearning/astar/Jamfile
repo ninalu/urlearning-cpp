@@ -1,0 +1,45 @@
+exe astar : 
+  astar_main.cpp
+  $(TOP)/base//base
+  $(TOP)/ad_tree//ad_tree
+  $(TOP)/fileio//fileio
+  $(TOP)/heuristic//heuristic
+  $(TOP)/score_cache//score_cache
+  $(TOP)/priority_queue//priority_queue
+  $(TOP)/scoring_function//scoring_function
+  $(BOOST_ROOT)/lib/libboost_system.a
+  $(BOOST_ROOT)/lib/libboost_program_options.a
+  $(BOOST_ROOT)/lib/libboost_thread.a
+  $(BOOST_ROOT)/lib/libboost_timer.a
+  $(BOOST_ROOT)/lib/libboost_chrono.a
+  /usr/local/lib/libmlpack.so
+: <linkflags>-larmadillo
+  <linkflags>-lpthread
+;
+
+exe triplet_astar:
+  triplet_astar.cpp
+  neighbors.h
+  $(TOP)/base//base
+  $(TOP)/ad_tree//ad_tree
+  $(TOP)/fileio//fileio
+  $(TOP)/heuristic//heuristic
+  $(TOP)/score_cache//score_cache
+  $(TOP)/priority_queue//priority_queue
+  $(TOP)/scoring_function//scoring_function
+  $(BOOST_ROOT)/lib/libboost_system.a
+  $(BOOST_ROOT)/lib/libboost_program_options.a
+  $(BOOST_ROOT)/lib/libboost_thread.a
+  $(BOOST_ROOT)/lib/libboost_timer.a
+  $(BOOST_ROOT)/lib/libboost_chrono.a
+  /usr/local/lib/libmlpack.so
+: <linkflags>-larmadillo
+  <linkflags>-lpthread
+;
+
+
+exe calc_dag_score :
+  calc_dag_score.cpp
+  $(TOP)/score_cache//score_cache
+  $(TOP)/base//base
+;

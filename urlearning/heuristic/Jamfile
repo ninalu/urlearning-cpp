@@ -1,0 +1,6 @@
+lib heuristic :
+        combined_pattern_database.cpp
+        dynamic_pattern_database.cpp
+        file_pattern_database.cpp
+        static_pattern_database.cpp
+;
