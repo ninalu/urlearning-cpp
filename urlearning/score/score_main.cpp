@@ -1,3 +1,4 @@
+// This file generate the score file .pss and produce a skeleton file
 #include <cstdlib>
 #include <ctime>
 #include <math.h>
@@ -19,13 +20,15 @@
 #include "urlearning/scoring_function/score_calculator.h"
 
 #include "urlearning/scoring_function/constraints.h"
+#include "urlearning/base/skeleton.hpp"
 
 #include "urlearning/scoring_function/bdeu_scoring_function.h"
 #include "urlearning/scoring_function/bic_scoring_function.h"
 #include "urlearning/scoring_function/fnml_scoring_function.h"
-
+#include "urlearning/scoring_function/lasso_entropy_scoring_function.h"
+#include "urlearning/scoring_function/adaptive_lasso_entropy.h"
+#include "urlearning/scoring_function/BIC_OLS.h"
 namespace po = boost::program_options;
-
 /**
  * The file containing the data.
  */
@@ -47,6 +50,13 @@ std::string outputFile;
 std::string constraintsFile;
 
 /**
+ * Skeleton File specifies the skeleton superstructure
+ */
+std::string skeletonFile;
+
+datastructures::Skeleton skeleton;
+
+/**
  * The minimum number of records in the AD-tree.
  */
 int rMin = 5;
@@ -54,8 +64,12 @@ int rMin = 5;
 /**
  * The scoring function to use.
  */
-std::string sf = "BIC";
+std::string sf = "lasso";
 
+/**
+ * which score to use, 0 for lasso, 1 for entropy1, 2 for entropy2
+ */
+int which = 1;
 /**
  * A reference to the scoring function object.
  */
@@ -64,6 +78,7 @@ scoring::ScoringFunction *scoringFunction;
 /**
  * The ess to use for BDeu.
  */
+
 float equivalentSampleSize = 1.0f;
 
 /**
@@ -116,7 +131,8 @@ inline std::string getTime() {
 
 void scoringThread(int thread) {
     scoring::ScoreCalculator scoreCalculator(scoringFunction, maxParents, network.size(), runningTime, constraints);
-
+    const int num = network.size();
+    
     for (int variable = 0; variable < network.size(); variable++) {
         if (variable % threadCount != thread) {
             continue;
@@ -126,18 +142,33 @@ void scoringThread(int thread) {
 
         FloatMap sc;
         init_map(sc);
-        scoreCalculator.calculateScores(variable, sc);
+	// also include neighbors' neighbors
+	varset orig_neighbor_bits = skeleton.get_neighbors(variable);
+	varset neighbor_bits = orig_neighbor_bits;
+	const int card1 = cardinality(orig_neighbor_bits);
+	for(int j=0; j < num; j++)
+	{
+	  if(VARSET_GET(orig_neighbor_bits, j) and j != variable)
+	    neighbor_bits = VARSET_OR( neighbor_bits, skeleton.get_neighbors(j) );
+	}
+	const int card2 = cardinality(neighbor_bits);
+        scoreCalculator.calculateScores( variable, sc, neighbor_bits );
 
         //#ifdef DEBUG
         int size = sc.size();
-        printf("Thread: %d, Variable: %d, Size before pruning: %d, Time: %s\n", thread, variable, size, getTime().c_str());
+        printf("Thread: %d, Variable: %d, Size before pruning: %d, Time: %s, neighbor cardinality %d/%d: %s / %s\n"
+	      , thread, variable, size, getTime().c_str(), card1, card2
+	      , varsetToString(orig_neighbor_bits).c_str(), varsetToString(neighbor_bits).c_str() );
         //#endif
-
-        if (prune) {
-            scoreCalculator.prune(sc);
-            int prunedSize = sc.size();
-            printf("Thread: %d, Variable: %d, Size after pruning: %d, Time: %s\n", thread, variable, prunedSize, getTime().c_str());
-        }
+        
+        //Ni added, print out score
+        //printf("Independent and dependent scores, variable # %d, ind_score %f, depend_score %f\n", variable, sc[0], sc[optimal_parents[variable]]);
+//    Ni added, commented out on June 10, 2017, prune might not work with continuous case
+//        if (prune) {
+//            scoreCalculator.prune(sc);
+//            int prunedSize = sc.size();
+//            printf("Thread: %d, Variable: %d, Size after pruning: %d, Time: %s\n", thread, variable, prunedSize, getTime().c_str());
+//        }
 
         std::string varFilename = outputFile + "." + TO_STRING(variable);
         FILE *varOut = fopen(varFilename.c_str(), "w");
@@ -146,11 +177,11 @@ void scoringThread(int thread) {
         fprintf(varOut, "VAR %s\n", var->getName().c_str());
         fprintf(varOut, "META arity=%d\n", var->getCardinality());
 
-        fprintf(varOut, "META values=");
-        for (int i = 0; i < var->getCardinality(); i++) {
-            fprintf(varOut, "%s ", var->getValue(i).c_str());
-        }
-        fprintf(varOut, "\n");
+        //fprintf(varOut, "META values=");
+        //for (int i = 0; i < var->getCardinality(); i++) {
+        //    fprintf(varOut, "%s ", var->getValue(i).c_str());
+        //}
+        //fprintf(varOut, "\n");
 
 
         for (auto score = sc.begin(); score != sc.end(); score++) {
@@ -180,12 +211,17 @@ int main(int argc, char** argv) {
 
     std::string description = std::string("Compute the scores for a csv file.  Example usage: ") + argv[0] + " iris.csv iris.pss";
     po::options_description desc(description);
-
+    double lambda = 0.5; // for lasso 
+    bool adaptive = false;
     desc.add_options()
             ("input", po::value<std::string > (&inputFile)->required(), "The input file. First positional argument.")
             ("output", po::value<std::string > (&outputFile)->required(), "The output file. Second positional argument.")
             ("delimiter,d", po::value<char> (&delimiter)->required()->default_value(','), "The delimiter of the input file.")
+            ("lambda,l", po::value<double> (&lambda), "The lambda in Lasso.")
+            ("adaptive,a", "Use adaptive Lasso")
+            ("scoreType,w", po::value<int> (&which)->default_value(1), "which score, 0 for lasso, 1 for entropy1, 2 for entropy2")
             ("constraints,c", po::value<std::string > (&constraintsFile), "The file specifying constraints on the scores.")
+            ("skeleton,k", po::value<std::string > (&skeletonFile), "The file specifying the skeleton superstructure")
             ("rMin,m", po::value<int> (&rMin)->default_value(5), "The minimum number of records in the AD-tree nodes.")
             ("function,f", po::value<std::string > (&sf)->default_value("BIC"), "The scoring function to use.")
             ("ess,e", po::value<float> (&equivalentSampleSize)->default_value(1.0f), "The equivalent sample size, if BDeu is used.")
@@ -210,6 +246,11 @@ int main(int argc, char** argv) {
     if (vm.count("help") || argc == 1) {
         std::cout << desc;
         return 0;
+    }
+    if(vm.count("adaptive"))
+    {
+        adaptive = true;
+        std::cout << "Will use adaptive Lasso\n";
     }
 
     po::notify(vm);
@@ -256,38 +297,78 @@ int main(int argc, char** argv) {
         maxParents = network.size() - 1;
     }
 
-    if (sf.compare("bic") == 0) {
+    if (sf.compare("bic") == 0) { // bic discrete
         int maxParentCount = log(2 * recordFile.size() / log(recordFile.size()));
         if (maxParentCount < maxParents) {
             maxParents = maxParentCount;
         }
+    } else if (sf.compare("cbic") == 0) { // bic continuous
     } else if (sf.compare("fnml") == 0) {
     } else if (sf.compare("bdeu") == 0) {
+    } else if (sf.compare("lasso") == 0 or sf.compare("entropy") == 0) {  //Ni added
+    } else if (sf.compare("adaptive_lasso") == 0 or sf.compare("adaptive") == 0) {  //Ni added
     } else {
-        throw std::runtime_error("Invalid scoring function.  Options are: 'BIC', 'fNML' or 'BDeu'.");
+        throw std::runtime_error("Invalid scoring function.  Options are: 'lasso','adaptive', 'BIC', 'fNML' or 'BDeu'.");
     }
 
     scoring::Constraints *constraints = NULL;
     if (constraintsFile.length() > 0) {
         constraints = scoring::parseConstraints(constraintsFile, network);
     }
-
+    printf("Skeleton file %s\n", skeletonFile.c_str());
+    if(skeletonFile.size() > 0) //Need parse the skeleton file
+    {
+    	if(skeletonFile.find(".arc") + 4 == skeletonFile.size())
+    		skeleton.read_arc_list_file(skeletonFile, network.size());
+    	else
+    		skeleton.read_matrix_file(skeletonFile);
+    }
+    else
+    {
+        skeleton.set_variable_count(network.size());
+    }
+    
+    
     scoringFunction = NULL;
+    scoring::LogLikelihoodCalculator *llc = NULL;
+    std::vector< std::vector< float >* >* regret = NULL;
 
-    std::vector<float> ilogi = scoring::LogLikelihoodCalculator::getLogCache(recordFile.size());
-    scoring::LogLikelihoodCalculator *llc = new scoring::LogLikelihoodCalculator(adTree, network, ilogi);
-
-    std::vector< std::vector< float >* >* regret = scoring::getRegretCache(recordFile.size(), network.getMaxCardinality());
-
-
-    if (sf.compare("bic") == 0) {
-        scoringFunction = new scoring::BICScoringFunction(network, recordFile, llc, constraints, enableDeCamposPruning);
-    } else if (sf.compare("fnml") == 0) {
-        scoringFunction = new scoring::fNMLScoringFunction(network, llc, constraints, regret, enableDeCamposPruning);
-    } else if (sf.compare("bdeu") == 0) {
-        scoringFunction = new scoring::BDeuScoringFunction(equivalentSampleSize, network, adTree, constraints, enableDeCamposPruning);
+    if(sf.compare("bic") == 0 or sf.compare("fnml") == 0)
+    {
+      std::vector<float> ilogi = scoring::LogLikelihoodCalculator::getLogCache(recordFile.size());
+      llc = new scoring::LogLikelihoodCalculator(adTree, network, ilogi);
+      regret = scoring::getRegretCache(recordFile.size(), network.getMaxCardinality());
     }
 
+
+    if (sf.compare("bic") == 0) //bic for discrete variables
+    { 
+        scoringFunction = new scoring::BICScoringFunction(network, recordFile, llc, constraints, enableDeCamposPruning);
+    }
+    else if(sf.compare("cbic") == 0) // bic for continuous variables
+    {
+	printf("Creating continuous BIC function\n");
+	scoringFunction = new scoring::BIC_OLS_Function(network, inputFile, constraints, enableDeCamposPruning, lambda);
+    } 
+    else if (sf.compare("fnml") == 0) 
+    {
+        scoringFunction = new scoring::fNMLScoringFunction(network, llc, constraints, regret, enableDeCamposPruning);
+    } 
+    else if (sf.compare("bdeu") == 0) 
+    {
+        scoringFunction = new scoring::BDeuScoringFunction(equivalentSampleSize, network, adTree, constraints, enableDeCamposPruning);
+    } 
+    else if (sf.compare("lasso") == 0 or sf.compare("entropy") == 0)
+    {
+        printf("Creating Entropy/LassoFunction with input file %s\n", inputFile.c_str());
+        scoringFunction = new scoring::LassoEntropyScoringFunction(network, which, inputFile, lambda, constraints, enableDeCamposPruning);
+    } 
+    else if (sf.compare("adaptive_lasso") == 0 or sf.compare("adaptive") == 0)
+    {
+        printf("Creating Adaptive Entropy/LassoFunction with input file %s\n", inputFile.c_str());
+        scoringFunction = new scoring::AdaptiveLassoEntropyScoringFunction(network, which, inputFile, lambda, constraints, adaptive, enableDeCamposPruning);
+    }
+    
     std::vector<boost::thread*> threads;
     for (int thread = 0; thread < threadCount; thread++) {
         boost::thread *workerThread = new boost::thread(scoringThread, thread);

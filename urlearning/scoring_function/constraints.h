@@ -75,6 +75,32 @@ namespace scoring {
             printf("Added constraint. Variable: %d. RequriedParents: %s. Forbidden parents: %s.\n", variable, varsetToString(requiredParents).c_str(), varsetToString(forbiddenParents).c_str());
 #endif
         }
+        /**
+         * Expand the forbiddenParents for a variable
+         * @param variableIndex, the variable whose forbidden parents to be expanded
+         * @param forbidden parents
+         * @return 
+         */
+        void expand_forbidden_parents(int variableIndex, const varset & forbidden)
+        {
+            int num_constraints = constraints[variableIndex][1].size();
+            std::cout << "Forbidden parents size " << num_constraints 
+                      << ", variable #" << variableIndex
+                      << ", forbidden " << varsetToString(forbidden)
+                      << std::endl
+                      ;
+            if(num_constraints)
+            {
+              for(int i=0; i<num_constraints; i++)
+                VARSET_OR(constraints[variableIndex][1][i], forbidden);
+            }
+            else
+            {
+                constraints[variableIndex][1].push_back(forbidden);
+                VARSET_NEW(empty, variableCount);
+                constraints[variableIndex][0].push_back(empty);// push an empty varset for required
+            }
+        }
 
         /**
          * Find the number of constraints for {@code variable}.
@@ -94,7 +120,7 @@ namespace scoring {
          * @param parents the parent set
          * @return {@code true} if {@code parents} satisfies at least one constraint
          */
-        bool satisfiesConstraints(int variable, varset &parents) {
+        bool satisfiesConstraints(int variable, const varset &parents) {
             // if there are no constraints, then everything satisfies
             if (size(variable) == 0) {
                 return true;

@@ -7,7 +7,7 @@
 
 #include <iostream>
 #include <ostream>
-
+#include <limits>
 #include <math.h>
 
 #include "static_pattern_database.h"
@@ -73,6 +73,8 @@ void heuristics::StaticPatternDatabase::initialize(std::vector<bestscorecalculat
         init_map(patternDatabase);
         patternDatabases.push_back(patternDatabase);
 
+//        printf("Replaced allVariables 1, original %s, new set %s\n",varsetToString(allVariables).c_str(), varsetToString(variableSets[pd_i]).c_str());
+//        createPatternDatabase(variableSets[pd_i], variableSets[pd_i], variableSetSize, spgs, patternDatabases[pd_i]);
         createPatternDatabase(allVariables, variableSets[pd_i], variableSetSize, spgs, patternDatabases[pd_i]);
     }
 }
@@ -126,6 +128,7 @@ void heuristics::StaticPatternDatabase::initialize(std::vector<bestscorecalculat
         init_map(patternDatabase);
         patternDatabases.push_back(patternDatabase);
 
+    //    printf("Replaced allVariables 2, original %s, new set %s\n",varsetToString(allVariables).c_str(), varsetToString(variableSets[pd_i]).c_str());
         createPatternDatabase(allVariables, variableSets[pd_i], variableSetSize, spgs, patternDatabases[pd_i]);
     }
 }
@@ -138,6 +141,7 @@ int heuristics::StaticPatternDatabase::size() {
     return size;
 }
 
+float default_big_score = std::numeric_limits<float>::max()/64.0;// Ni added
 float heuristics::StaticPatternDatabase::h(const varset &variables, bool &complete) {
     float h = 0;
 
@@ -151,12 +155,18 @@ float heuristics::StaticPatternDatabase::h(const varset &variables, bool &comple
 
     for (int pd_i = 0; pd_i < patternDatabaseCount; pd_i++) {
         varset vs = VARSET_AND(variableSets[pd_i], remaining);
-        
+        auto iter = patternDatabases[pd_i].find(vs);    //Ni added
+        if(iter==patternDatabases[pd_i].end())//Ni added
+        {
+            printf("Pattern %lx is not found in database %d", vs, pd_i);//Ni added
+            return default_big_score;
+        }
         if (vs == remaining) {
             complete = true;
+            //iter->second;
             return patternDatabases[pd_i][vs];
         }
-
+        //h += iter->second;
         h += patternDatabases[pd_i][vs];
     }
 
@@ -169,11 +179,12 @@ void heuristics::StaticPatternDatabase::createPatternDatabase(const varset &allV
 
     previousLayer[allVariables] = 0;
 
+    printf("createPatternDatabase, allVariables %s, variableSet %s\n", varsetToString(allVariables).c_str(), varsetToString(variableSet).c_str());
     // create the pattern database by performing a reverse bfs
     for (int layer = 0; layer <= variableSetSize; layer++) {
         FloatMap currentLayer;
         init_map(currentLayer);
-
+	printf("Working on layer %d\n", layer);
         for (FloatMap::iterator it = previousLayer.begin();
                 it != previousLayer.end();
                 ++it) {
@@ -217,12 +228,13 @@ void heuristics::StaticPatternDatabase::expand(varset &subnetwork, const float g
         // find the best parents
         VARSET_NEW(parentChoices, variableCount);
         parentChoices = VARSET_OR(subnetwork, ancestors);
+        float the_score = spgs[leaf]->getScore(parentChoices); 
+        //float newG = spgs[leaf]->getScore(parentChoices) + g;
+        float newG = the_score + g;
+//#ifdef DEBUG
+        //printf("expand, Looking for parents for leaf %d, parent choices: %s, score %f, g=%f, newG=%f\n", leaf, varsetToString(parentChoices).c_str(), the_score, g, newG);
+//#endif
         
-#ifdef DEBUG
-        //printf("Looking for parents for %d, choices: %s\n", leaf, varsetToString(parentChoices).c_str());
-#endif
-        
-        float newG = spgs[leaf]->getScore(parentChoices) + g;
 
         // duplicate detection
         varset new_subnetwork = varsetClearCopy(subnetwork, leaf);
@@ -231,5 +243,6 @@ void heuristics::StaticPatternDatabase::expand(varset &subnetwork, const float g
         if (oldG == 0 || newG < oldG) {
             currentLayer[new_subnetwork] = newG;
         }
+	//printf("expand by clearing leaf %d, oldG=%f, newG=%f, old_subnetwork %s, new_subnetwork %s\n", leaf, oldG, newG, varsetToString(subnetwork).c_str(), varsetToString(new_subnetwork).c_str());
     }
 }

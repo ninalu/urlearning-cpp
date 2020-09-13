@@ -25,6 +25,7 @@ namespace heuristics {
         virtual int size() = 0;
         virtual void print() = 0;
         virtual void printStatistics() = 0;
+	virtual ~Heuristic(){}
     };
 }
 

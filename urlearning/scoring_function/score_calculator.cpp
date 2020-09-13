@@ -30,7 +30,7 @@ void scoring::ScoreCalculator::timeout(const boost::system::error_code& /*e*/) {
     outOfTime = true;
 }
 
-void scoring::ScoreCalculator::calculateScores(int variable, FloatMap &cache) {
+void scoring::ScoreCalculator::calculateScores(int variable, FloatMap &cache, varset & neighbors) {
     this->outOfTime = false;
     
     //io.reset();
@@ -41,17 +41,17 @@ void scoring::ScoreCalculator::calculateScores(int variable, FloatMap &cache) {
         printf("I am using a timer in the calculation function.\n");
         t->expires_from_now(boost::posix_time::seconds(runningTime));
         t->async_wait(boost::bind(&scoring::ScoreCalculator::timeout, this, boost::asio::placeholders::error));
-        boost::thread workerThread(boost::bind(&scoring::ScoreCalculator::calculateScores_internal, this, variable, boost::ref(cache)));
+        boost::thread workerThread(boost::bind(&scoring::ScoreCalculator::calculateScores_internal, this, variable, boost::ref(cache), boost::ref(neighbors)));
         io_t.run();
         workerThread.join();
         io_t.stop();
 //        t.cancel();
     } else {
-        calculateScores_internal(variable, cache);
+        calculateScores_internal(variable, cache, neighbors);
     }
 }
 
-void scoring::ScoreCalculator::calculateScores_internal(int variable, FloatMap &cache) {
+void scoring::ScoreCalculator::calculateScores_internal(int variable, FloatMap &cache, varset & neighbors) {
     // calculate the initial score
     VARSET_NEW(empty, variableCount);
     float score = scoringFunction->calculateScore(variable, empty, cache);
@@ -61,22 +61,45 @@ void scoring::ScoreCalculator::calculateScores_internal(int variable, FloatMap &
     }
     
     int prunedCount = 0;
+    // Ni added, record the neighbors' indices
+    std::vector<int> neighbor_indices;
+    for(int  i = 0; i  < variableCount; i++)
+    {
+        if(VARSET_GET(neighbors,  i))
+        {
+            //printf("Will map compact bit # %d to neighbor variable #%d, for variable %d\n", int(neighbor_indices.size()),  i, variable);
+            neighbor_indices.push_back(i);
+        }
+    }
+    const int num_neighbors = neighbor_indices.size();
+    
+    //printf("calculateScores_internal, variable %d has %d neighbors, total variable count  %d\n", variable, num_neighbors, variableCount);
 
     for (int layer = 1; layer <= maxParents && !outOfTime; layer++) {
 #ifdef DEBUG
         printf("layer: %d, prunedCount: %d\n", layer, prunedCount);
 #endif
 
-        VARSET_NEW(variables, variableCount);
+        VARSET_NEW(compact_variables, num_neighbors);
         for (int i = 0; i < layer; i++) {
-            VARSET_SET(variables, i);
+            VARSET_SET(compact_variables, i);
         }
 
-        VARSET_NEW(max, variableCount);
-        VARSET_SET(max, variableCount);
+        VARSET_NEW(max, num_neighbors);
+        VARSET_SET(max, num_neighbors);
         
-        while (VARSET_LESS_THAN(variables, max) && !outOfTime) {
+        while (VARSET_LESS_THAN(compact_variables, max) && !outOfTime) {
+            //Ni added, translate shorter bitset compact_variables to full-length bitset variables
+            VARSET_NEW(variables, variableCount);
+            for(int i = 0; i < num_neighbors; i++)
+            {
+                if(VARSET_GET(compact_variables, i))
+                    VARSET_SET(variables, neighbor_indices[i]);
+            }
+            
             if (!VARSET_GET(variables, variable)) {
+            
+                
                 score = scoringFunction->calculateScore(variable, variables, cache);
                 
 #ifdef VERBOSE_DEBUG
@@ -93,7 +116,7 @@ void scoring::ScoreCalculator::calculateScores_internal(int variable, FloatMap &
             }
 
             // find the next combination
-            variables = nextPermutation(variables);
+            compact_variables = nextPermutation(compact_variables);
         }
         
         if (!outOfTime) highestCompletedLayer = layer;

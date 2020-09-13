@@ -29,7 +29,7 @@ public:
     Node(int variableCount) : g(0), h(0), subnetwork(varset(variableCount)), leaf(0), pqPos(-1) {
     }
 
-    Node(float g, float h, varset &subnetwork, byte &leaf) :
+    Node(float g, float h, const varset &subnetwork, byte &leaf) :
     g(g), h(h), subnetwork(subnetwork), leaf(leaf), pqPos(0) {
     }
 

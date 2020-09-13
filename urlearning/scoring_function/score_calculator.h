@@ -29,11 +29,17 @@ namespace scoring {
             // these could possibly be "smart pointers" or something...
         }
         
-        void calculateScores(int variable, FloatMap &cache);
+	// Ni added
+	// neighbors is an in/out parameter. As an in parameter, it is the maximal set of parent/child variables  
+	// As an out parameter, neighbors is the set of parent and child variables when the function returns
+        void calculateScores(int variable, FloatMap &cache, varset & neighbors);
         void prune(FloatMap &cache);
 
     private:
-        void calculateScores_internal(int variable, FloatMap &cache);
+	// Ni added
+        // neighbors is an in/out parameter. As an in parameter, it is the maximal set of parent/child variables
+        // As an out parameter, neighbors is the set of parent and child variables when the function returns
+        void calculateScores_internal(int variable, FloatMap &cache, varset & neighbors);
         void timeout(const boost::system::error_code& /*e*/);
         
         int highestCompletedLayer;

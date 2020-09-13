@@ -23,7 +23,12 @@ namespace heuristics {
         CombinedPatternDatabase() {
         }
         CombinedPatternDatabase(const int variableCount, const int pdCount, const int maxSize, int staticCount);
-        ~CombinedPatternDatabase();
+        ~CombinedPatternDatabase()
+	{
+          for(size_t i=0; i<spds.size(); i++)
+	    delete spds[i]; 
+	  delete dpd;
+	}
 
         void initialize(std::vector<bestscorecalculators::BestScoreCalculator*> &spgs);
 

@@ -12,7 +12,7 @@
 #include <string>
 
 #include <boost/unordered_map.hpp>
-
+#include <armadillo>
 #include "urlearning/base/typedefs.h"
 #include "urlearning/base/bayesian_network.h"
 
@@ -22,9 +22,15 @@ namespace datastructures {
 
 namespace scoring {
 
+    struct ScoreParameters
+    {   
+        double score;
+        arma::vec beta;
+    };
+    
     class ScoreCache {
     public:
-
+        
         ScoreCache() {
             // should never be called
         }

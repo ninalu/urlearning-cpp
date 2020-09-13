@@ -17,6 +17,8 @@ namespace scoring {
         
     public:
         virtual float calculateScore(int variable, varset parents, FloatMap &cache) = 0;
+        // Do nothing in post_processing by default
+        virtual void post_processing(std::vector<int> & total_ordering, std::vector<varset>& optimalParents){}
         
     };
 }

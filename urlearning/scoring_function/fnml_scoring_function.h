@@ -41,8 +41,8 @@ namespace scoring {
         bool enableDeCamposPruning;
     };
 
-#define pi 3.1415926535897932384626433832795
-
+//#define pi 3.1415926535897932384626433832795  //Ni, commented out to fix compilor error
+    const double pi = 3.1415926535897932384626433832795D;
 
     static float r2_1000[] = {
         1.0, 2.0, 2.5, 2.88888888889, 3.21875, 3.5104, 3.77469135802,
