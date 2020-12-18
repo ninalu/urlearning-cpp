@@ -231,7 +231,7 @@ float BIC_OLS_Function::calculateScore(int variable, varset parents, FloatMap &c
     checked.insert(empty_set); // insert empty set
     VARSET_COPY(parents, subset);
     float best_subset_score = find_best_subset_score(parents, cache, parent_vec, num_parents, checked, subset );
-    if( best_subset_score + bic_threshold >= -the_score)
+    if(num_parents > 0 and best_subset_score + bic_threshold >= -the_score)
     {
       if(verbose)
       cout << __FILE__ << ":" << __LINE__

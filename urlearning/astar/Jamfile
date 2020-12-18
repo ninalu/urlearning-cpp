@@ -17,7 +17,7 @@ exe astar :
   <linkflags>-lpthread
 ;
 
-exe triplet_astar:
+exe triplet_astar :
   triplet_astar.cpp
   neighbors.h
   $(TOP)/base//base

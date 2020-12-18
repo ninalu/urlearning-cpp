@@ -31,7 +31,6 @@
 #include "urlearning/heuristic/heuristic_creator.h"
 #include "urlearning/base/skeleton.hpp"
 #include "urlearning/base/bayesian_network.h"
-#include "undirected_edges.hpp"
 #include "urlearning/base/EdgeConstraints.h"
 
 //#include "urlearning/scoring_function/bdeu_scoring_function.h"
